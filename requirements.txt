@@ -1,0 +1,34 @@
+# Core dependencies
+selenium==4.15.2
+requests==2.31.0
+cryptography==41.0.7
+
+# AI/ML dependencies
+transformers==4.35.2
+torch==2.1.1
+torchvision==0.16.1
+sentence-transformers==2.2.2
+scikit-learn==1.3.2
+numpy==1.24.3
+
+# GUI and build tools (tkinter встроен в Python)
+pyinstaller==6.2.0
+
+# Additional utilities
+beautifulsoup4==4.12.2
+lxml==4.9.3
+urllib3==2.1.0
+certifi==2023.11.17
+pillow==10.1.0
+
+# WebDriver management
+webdriver-manager==4.0.1
+
+# Additional Python utilities
+python-dotenv==1.0.0
+
+# Development
+pytest==7.4.3
+
+# Tray icon for 24/7 operation
+pystray==0.19.5
