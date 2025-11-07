@@ -93,43 +93,83 @@ class FanslySeleniumScraper:
                 self.driver = None
         
     def _create_driver(self) -> webdriver.Chrome:
-        """Создание и настройка Chrome WebDriver"""
+        """Создание и настройка Chrome WebDriver с постоянным профилем (stealth mode)"""
         try:
             options = Options()
             
+            # КЛЮЧЕВОЕ: Постоянный профиль для сохранения сессии (аналог userDataDir в Puppeteer)
+            import os
+            profile_dir = os.path.join(os.getcwd(), '.profile-fansly')
+            if not os.path.exists(profile_dir):
+                os.makedirs(profile_dir)
+                logger.info(f"🆕 Создан профиль Chrome: {profile_dir}")
+            
+            options.add_argument(f'--user-data-dir={profile_dir}')
+            logger.info(f"📁 Используем постоянный профиль Chrome: {profile_dir}")
+            
             if self.headless:
-                options.add_argument('--headless')
+                options.add_argument('--headless=new')
+            
+            # Stealth-режим: максимальный антидетект
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+            options.add_experimental_option('useAutomationExtension', False)
             
             # Настройки для стабильности
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
+            options.add_argument('--lang=en-US,en')
             options.add_argument(f'--user-agent={self.user_agent}')
             
-            # Анти-детект настройки
-            options.add_argument('--disable-blink-features=AutomationControlled')
-            options.add_experimental_option("excludeSwitches", ["enable-automation"])
-            options.add_experimental_option('useAutomationExtension', False)
+            # Отключаем WebRTC для скрытия реального IP
+            options.add_experimental_option("prefs", {
+                "webrtc.ip_handling_policy": "disable_non_proxied_udp",
+                "webrtc.multiple_routes_enabled": False,
+                "webrtc.nonproxied_udp_enabled": False
+            })
             
             # Автоматическое управление драйвером
             service = Service(ChromeDriverManager().install())
             driver = webdriver.Chrome(service=service, options=options)
             
-            # Скрываем что мы используем автоматизацию
-            driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+            # CDP команды для максимального stealth (аналог puppeteer-extra-plugin-stealth)
+            driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': '''
+                    // Удаляем webdriver property
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    
+                    // Переопределяем plugins
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                    
+                    // Переопределяем languages
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['en-US', 'en']
+                    });
+                    
+                    // Добавляем chrome property
+                    window.chrome = {
+                        runtime: {}
+                    };
+                '''
+            })
             
             # Открываем страницу логина сразу при создании драйвера (чтобы избежать лишних перезагрузок)
             if not self.headless:
-                logger.debug("Открываем страницу логина при создании драйвера...")
+                logger.debug("🌐 Открываем страницу логина при создании драйвера...")
                 driver.get(self.LOGIN_URL)
                 time.sleep(2)  # Даем время на загрузку
             
-            logger.info("Chrome WebDriver создан успешно")
+            logger.info("✅ Chrome WebDriver создан успешно с stealth-режимом")
             return driver
             
         except Exception as e:
-            logger.error(f"Ошибка создания WebDriver: {e}")
+            logger.error(f"❌ Ошибка создания WebDriver: {e}")
             raise
     
     def _random_delay(self, min_seconds: float = 1.0, max_seconds: float = 3.0):
